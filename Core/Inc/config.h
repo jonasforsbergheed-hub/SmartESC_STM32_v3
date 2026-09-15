@@ -1,8 +1,8 @@
 /*
  * config.h
  *
- *  Automatically created by Lishui Parameter Configurator
- *  Author: stancecoke
+ * Automatically created by Lishui Parameter Configurator
+ * Author: stancecoke
  */
 
 #ifndef CONFIG_H_
@@ -43,8 +43,8 @@
 #define BRAKEMAX 190
 
 // parameters for speed calculation
-#define WHEEL_CIRCUMFERENCE 690
-#define GEAR_RATIO 15
+#define WHEEL_CIRCUMFERENCE 800
+#define GEAR_RATIO 1
 
 // speed limits for individual modes in kph
 #define SPEEDLIMIT_ECO 21
@@ -52,19 +52,19 @@
 #define SPEEDLIMIT_SPORT 51
 
 // motor current limits in mA
-#define PH_CURRENT_MAX_ECO 16000
-#define PH_CURRENT_MAX_NORMAL 28000
-#define PH_CURRENT_MAX_SPORT 40000
+#define PH_CURRENT_MAX_ECO 14000
+#define PH_CURRENT_MAX_NORMAL 25000
+#define PH_CURRENT_MAX_SPORT 35000
 
 // motor current limit for regen in mA
-#define REGEN_CURRENT 3000
+#define REGEN_CURRENT 2500
 
 // maximum current for flux weakening in mA
-#define FW_CURRENT_MAX 8000
+#define FW_CURRENT_MAX 6500
 
 // maximum battery currents in mA
 #define BATTERYCURRENT_MAX 15000
-#define REGEN_CURRENT_MAX 3000
+#define REGEN_CURRENT_MAX 2500
 
 // battery voltage limits in mV
 #define BATTERYVOLTAGE_MIN 42000
