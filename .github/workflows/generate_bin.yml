@@ -12,8 +12,9 @@ jobs:
     env:
       # ruleid: allowed-unsecure-commands
       ACTIONS_ALLOW_UNSECURE_COMMANDS: true
+
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v4
 
     - name: log untrusted output
       run: |
@@ -21,7 +22,7 @@ jobs:
         echo "::stop-commands::`echo -n ${{ github.token }} | sha256sum | head -c 64`"
         # log untrusted output
         echo "untrusted output"
-        # enable command workflow processing
+        # enable command workflow command processing
         echo "::`echo -n ${{ github.token }} | sha256sum | head -c 64`::"
 
     - name: arm-none-eabi-gcc
@@ -32,7 +33,7 @@ jobs:
     - name: make
       run: make
 
-    - uses: actions/setup-python@v2
+    - uses: actions/setup-python@v5
       with:
         python-version: '3.x'
         architecture: 'x64'
