@@ -5,44 +5,35 @@ on:
     branches: [patch-1]
   pull_request:
     branches: [patch-1]
+  workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
-    env:
-      # ruleid: allowed-unsecure-commands
-      ACTIONS_ALLOW_UNSECURE_COMMANDS: true
 
     steps:
-    - uses: actions/checkout@v4
+      - name: Hämta källkoden
+        uses: actions/checkout@v4
 
-    - name: log untrusted output
-      run: |
-        # disable command workflow processing
-        echo "::stop-commands::`echo -n ${{ github.token }} | sha256sum | head -c 64`"
-        # log untrusted output
-        echo "untrusted output"
-        # enable command workflow processing
-        echo "::`echo -n ${{ github.token }} | sha256sum | head -c 64`::"
+      - name: Installera ARM-kompilator
+        uses: fiam/arm-none-eabi-gcc@v1.0.2
+        with:
+          release: '9-2020-q2'
 
-    - name: arm-none-eabi-gcc
-      uses: fiam/arm-none-eabi-gcc@v1.0.2
-      with:
-        release: '9-2020-q2'
+      - name: Bygg firmware
+        run: make
 
-    - name: make
-      run: make
+      - name: Installera Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
 
-    - uses: actions/setup-python@v5
-      with:
-        python-version: '3.x'
-        architecture: 'x64'
+      - name: Skapa Xiaomi ZIP
+        run: python tools/xiaotea/Scripts/prepareZip_online.py
 
-    - run: python tools/xiaotea/Scripts/prepareZip_online.py
-
-    - name: 'Upload Artifact'
-      uses: actions/upload-artifact@v4
-      with:
-        path: ${{ github.workspace }}/tools/zip_output
-        name: M365_v3_build_${{ github.run_number }}
-        retention-days: 5
+      - name: Ladda upp firmware
+        uses: actions/upload-artifact@v4
+        with:
+          path: tools/zip_output
+          name: M365_SENSORLESS_PRO_${{ github.run_number }}
+          retention-days: 5
