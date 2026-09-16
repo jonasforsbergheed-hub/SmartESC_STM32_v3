@@ -12,15 +12,13 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Hämta källkod
+      - name: Hämta källkoden
         uses: actions/checkout@v4
-        with:
-          submodules: recursive
 
-      - name: Installera ARM GCC
+      - name: Installera ARM-kompilator
         run: |
           sudo apt-get update
-          sudo apt-get install -y gcc-arm-none-eabi binutils-arm-none-eabi libnewlib-arm-none-eabi
+          sudo apt-get install -y gcc-arm-none-eabi
 
       - name: Bygg firmware
         run: make
@@ -37,5 +35,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           path: tools/zip_output
-          name: M365_SENSORLESS_PRO_${{ github.run_number }}
+          name: M365_SENSORLESS_${{ github.run_number }}
           retention-days: 5
