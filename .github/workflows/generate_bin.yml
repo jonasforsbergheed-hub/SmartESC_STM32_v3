@@ -27,11 +27,13 @@ jobs:
         python-version: '3.x'
 
     - name: Prepare firmware ZIP
-      run: python tools/xiaotea/Scripts/prepareZip_online.py
+      run: |
+        mkdir -p tools/zip-output
+        cp FIRM.bin tools/zip-output/
 
     - name: Upload Artifact
       uses: actions/upload-artifact@v4.6.2
       with:
-        path: ${{ github.workspace }}/tools/zip_output
+        path: ${{ github.workspace }}/tools/zip-output
         name: M365_v3_build_${{ github.run_number }}
         retention-days: 5
