@@ -11,6 +11,8 @@
 #include "stm32f1xx_hal.h"
 #include "print.h"
 #include "M365_Dashboard.h"
+extern UART_HandleTypeDef huart3;
+
 #include "M365_memory_table.h"
 #include "decr_and_flash.h"
 #include "stm32f1xx_hal_flash.h"
