@@ -40,7 +40,7 @@ char PI_flag = 0;
 
 //const q31_t _T = 2048;
 
-TIM_HandleTypeDef htim1;
+extern TIM_HandleTypeDef htim1;
 
 void FOC_calculation(int16_t int16_i_as, int16_t int16_i_bs, q31_t q31_teta,
 		 MotorState_t *MS_FOC);
