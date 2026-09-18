@@ -35,5 +35,5 @@ jobs:
       uses: actions/upload-artifact@v4.6.2
       with:
         path: ${{ github.workspace }}/tools/zip-output
-        name: M365_v3_build_${{ github.run_number }}
+        path: ${{ github.workspace }}/tools/zip-output
         retention-days: 5
