@@ -1,0 +1,35 @@
+name: Build M365 V3
+
+on:
+  push:
+    branches: [patch-2]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: arm-none-eabi-gcc
+      uses: fiam/arm-none-eabi-gcc@v1.0.2
+      with:
+        release: '9-2020-q2'
+
+    - name: make
+      run: make
+
+    - uses: actions/setup-python@v2
+      with:
+        python-version: '3.x'
+        architecture: 'x64'
+
+    - run: python tools/xiaotea/Scripts/prepareZip_online.py
+
+    - name: Upload Artifact
+      uses: actions/upload-artifact@v2
+      with:
+        path: ${{ github.workspace }}/tools/zip_output
+        name: M365_v3_build_${{ github.run_number }}
+        retention-days: 5
