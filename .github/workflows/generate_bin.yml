@@ -7,25 +7,27 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
 
     steps:
-    - uses: actions/checkout@v2
+    - name: Checkout
+      uses: actions/checkout@v4
 
-    - name: arm-none-eabi-gcc
-      uses: fiam/arm-none-eabi-gcc@v1.0.2
-      with:
-        release: '9-2020-q2'
+    - name: Install ARM GCC
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y gcc-arm-none-eabi binutils-arm-none-eabi libnewlib-arm-none-eabi
 
-    - name: make
+    - name: Build
       run: make
 
-    - uses: actions/setup-python@v2
+    - name: Setup Python
+      uses: actions/setup-python@v5
       with:
         python-version: '3.x'
-        architecture: 'x64'
 
-    - run: python tools/xiaotea/Scripts/prepareZip_online.py
+    - name: Prepare firmware ZIP
+      run: python tools/xiaotea/Scripts/prepareZip_online.py
 
     - name: Upload Artifact
       uses: actions/upload-artifact@v4.6.2
