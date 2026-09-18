@@ -29,11 +29,11 @@ jobs:
     - name: Prepare firmware ZIP
       run: |
         mkdir -p tools/zip-output
-        cp build/EBiCS_Firmware2.bin tools/zip-output/FIRM.bin/
+        cp build/EBiCS_Firmware2.bin tools/zip-output/FIRM.bin
 
     - name: Upload Artifact
       uses: actions/upload-artifact@v4.6.2
       with:
         path: ${{ github.workspace }}/tools/zip-output
-        path: ${{ github.workspace }}/tools/zip-output
+        name: M365_v3_build_${{ github.run_number }}
         retention-days: 5
