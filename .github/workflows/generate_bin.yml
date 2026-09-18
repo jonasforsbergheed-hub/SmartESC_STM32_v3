@@ -10,30 +10,31 @@ jobs:
     runs-on: ubuntu-22.04
 
     steps:
-    - name: Checkout
-      uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
-    - name: Install ARM GCC
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y gcc-arm-none-eabi binutils-arm-none-eabi libnewlib-arm-none-eabi
+      - name: Install ARM GCC
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-arm-none-eabi binutils-arm-none-eabi libnewlib-arm-none-eabi
 
-    - name: Build
-      run: make
+      - name: Build
+        run: make
 
-    - name: Setup Python
-      uses: actions/setup-python@v5
-      with:
-        python-version: '3.x'
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
 
-    - name: Prepare firmware ZIP
-      run: |
-        mkdir -p tools/zip-output
-        cp build/EBiCS_Firmware2.bin tools/zip-output/FIRM.bin
+      - name: Prepare firmware package
+        run: |
+          mkdir -p tools/zip_output
+          cp build/EBiCS_Firmware2.bin build/firmware.bin
+          python tools/xiaotea/Scripts/prepareZip_online.py
 
-    - name: Upload Artifact
-      uses: actions/upload-artifact@v4.6.2
-      with:
-        path: ${{ github.workspace }}/tools/zip-output
-        name: M365_v3_build_${{ github.run_number }}
-        retention-days: 5
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4.6.2
+        with:
+          path: ${{ github.workspace }}/tools/zip_output
+          name: M365_v3_build_${{ github.run_number }}
+          retention-days: 5
