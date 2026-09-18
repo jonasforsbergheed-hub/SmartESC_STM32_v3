@@ -38,16 +38,29 @@
 
 #define CAL_BAT_V 14
 #define CAL_V 25
-#define CAL_I 38
+#define CAL_I 38LL<<8
 
 //------------------------------------------------------------
 // Motor parameters
 //------------------------------------------------------------
 
+#define SPEC_ANGLE 0
+#define KV 77
+
 #define INDUCTANCE 6LL
 #define RESISTANCE 40LL
 #define FLUX_LINKAGE 1200LL
 #define GAMMA 9LL
+
+//------------------------------------------------------------
+// Current controller
+//------------------------------------------------------------
+
+#define P_FACTOR_I_Q 100
+#define I_FACTOR_I_Q 2
+
+#define P_FACTOR_I_D 100
+#define I_FACTOR_I_D 10
 
 //------------------------------------------------------------
 // Speed calculation
