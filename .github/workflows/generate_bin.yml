@@ -28,7 +28,8 @@ jobs:
     - run: python tools/xiaotea/Scripts/prepareZip_online.py
 
     - name: Upload Artifact
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v2 → actions/upload-artifact@v4
+      
       with:
         path: ${{ github.workspace }}/tools/zip_output
         name: M365_v3_build_${{ github.run_number }}
