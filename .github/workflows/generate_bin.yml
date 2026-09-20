@@ -1,48 +1,38 @@
-name: C/C++ CI
+name: Build M365 V3
 
 on:
   push:
-    branches: [patch-1]
-  pull_request:
-    branches: [patch-1]
+    branches: [master]
+  workflow_dispatch:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
-    env:
-      # ruleid: allowed-unsecure-commands
-      ACTIONS_ALLOW_UNSECURE_COMMANDS: true
+    runs-on: ubuntu-22.04
 
     steps:
-    - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
-    - name: log untrusted output
-      run: |
-        # disable command workflow processing
-        echo "::stop-commands::`echo -n ${{ github.token }} | sha256sum | head -c 64`"
-        # log untrusted output
-        echo "untrusted output"
-        # enable command workflow command processing
-        echo "::`echo -n ${{ github.token }} | sha256sum | head -c 64`::"
+      - name: Install ARM GCC
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-arm-none-eabi binutils-arm-none-eabi libnewlib-arm-none-eabi
 
-    - name: arm-none-eabi-gcc
-      uses: fiam/arm-none-eabi-gcc@v1.0.2
-      with:
-        release: '9-2020-q2'
+      - name: Build
+        run: make
 
-    - name: make
-      run: make
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
 
-    - uses: actions/setup-python@v5
-      with:
-        python-version: '3.x'
-        architecture: 'x64'
+      - name: Prepare firmware package
+        run: |
+          python tools/xiaotea/Scripts/prepareZip_online.py
 
-    - run: python tools/xiaotea/Scripts/prepareZip_online.py
-
-    - name: 'Upload Artifact'
-      uses: actions/upload-artifact@v4
-      with:
-        path: ${{ github.workspace }}/tools/zip_output
-        name: M365_v3_build_${{ github.run_number }}
-        retention-days: 5
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          path: ${{ github.workspace }}/tools/zip_output
+          name: M365_v3_build_${{ github.run_number }}
+          retention-days: 5
