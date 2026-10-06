@@ -1,4 +1,7 @@
 /*
+/*
+ * config.h
+/*
  * config.h
  *
  * SmartESC STM32 V3 / M365
@@ -38,7 +41,7 @@
 
 #define CAL_BAT_V 14
 #define CAL_V 25
-#define CAL_I 38LL<<8
+#define CAL_I (38LL<<8)
 
 //------------------------------------------------------------
 // Motor parameters
@@ -74,44 +77,45 @@
 //------------------------------------------------------------
 
 #define SPEEDLIMIT_ECO 20
-#define SPEEDLIMIT_NORMAL 35
-#define SPEEDLIMIT_SPORT 55
+#define SPEEDLIMIT_NORMAL 40
+#define SPEEDLIMIT_SPORT 60
 
 //------------------------------------------------------------
 // Phase current limits (mA)
 //------------------------------------------------------------
 
-#define PH_CURRENT_MAX_ECO 15000
-#define PH_CURRENT_MAX_NORMAL 25000
-#define PH_CURRENT_MAX_SPORT 35000
+#define PH_CURRENT_MAX_ECO 20000
+#define PH_CURRENT_MAX_NORMAL 45000
+#define PH_CURRENT_MAX_SPORT 65000
 
 //------------------------------------------------------------
 // Regen
 //------------------------------------------------------------
 
-#define REGEN_CURRENT 1000
-#define REGEN_MAX_CURRENT 10000
-#define REGEN_CURRENT_MAX 10000
+#define REGEN_CURRENT 5000
+#define REGEN_MAX_CURRENT 5000
+#define REGEN_CURRENT_MAX 5000
 
 //------------------------------------------------------------
 // Field weakening
 //------------------------------------------------------------
 
 #define FW_CURRENT_MAX 0
+#define FIELD_WEAKENING_CURRENT_MAX 0
 #define FIELD_WEAKNING_CURRENT_MAX 0
 
 //------------------------------------------------------------
 // Battery current
 //------------------------------------------------------------
 
-#define BATTERYCURRENT_MAX 35000
-#define BATTERISTRÖM_MAX 35000
+#define BATTERYCURRENT_MAX 45000
+#define BATTERISTRÖM_MAX 45000
 
 //------------------------------------------------------------
 // Battery voltage limits
 //------------------------------------------------------------
 
-#define BATTERYVOLTAGE_MIN 33000
+#define BATTERYVOLTAGE_MIN 39000
 #define BATTERYVOLTAGE_MAX 54600
 
 //------------------------------------------------------------
@@ -141,9 +145,9 @@
 //------------------------------------------------------------
 // Speed PLL
 //------------------------------------------------------------
-
-#define SPEED_PLL 0
-#define HASTIGHET_PLL
+// SPEED_PLL intentionally not defined.
+// motor.c uses #ifdef SPEED_PLL, so defining it as 0
+// would still enable the PLL code.
 
 #define P_FACTOR_PLL 9
 #define I_FACTOR_PLL 10
