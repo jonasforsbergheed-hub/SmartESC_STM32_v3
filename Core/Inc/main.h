@@ -8,15 +8,23 @@ extern "C" {
 #include "stm32f1xx_hal.h"
 
 /* Private includes ----------------------------------------------------------*/
-/* USER CODE BEGIN Includes */
 #include <string.h>
 #include <stdlib.h>
 #include <arm_math.h>
 #include <stdbool.h>
 
-/* USER CODE END Includes */
+/* GPIO definitions ---------------------------------------------------------*/
+#define PWR_BTN_Pin        GPIO_PIN_14
+#define PWR_BTN_GPIO_Port  GPIOC
 
-/* Exported functions prototypes ---------------------------------------------*/
+#define TPS_ENA_Pin        GPIO_PIN_15
+#define TPS_ENA_GPIO_Port  GPIOC
+
+#define LED_Pin            GPIO_PIN_1
+#define LED_GPIO_Port      GPIOD
+
+#define UART1_Tx_Pin       GPIO_PIN_6
+#define UART1_Tx_GPIO_Port GPIOB
 
 void Error_Handler(void);
 
