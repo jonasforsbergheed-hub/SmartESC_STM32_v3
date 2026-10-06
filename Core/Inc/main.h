@@ -1,129 +1,147 @@
-/* USER CODE BEGIN Header */
-/**
- ******************************************************************************
- * @file           : main.h
- * @brief          : Header for main.c file.
- *                   This file contains the common defines of the application.
- ******************************************************************************
- * @attention
+/*
+ * config.h
  *
- * <h2><center>&copy; Copyright (c) 2020 STMicroelectronics.
- * All rights reserved.</center></h2>
- *
- * This software component is licensed by ST under BSD 3-Clause license,
- * the "License"; You may not use this file except in compliance with the
- * License. You may obtain a copy of the License at:
- *                        opensource.org/licenses/BSD-3-Clause
- *
- ******************************************************************************
+ * SmartESC STM32 V3 / M365
  */
-/* USER CODE END Header */
+#ifndef CONFIG_H_
+#define CONFIG_H_
 
-#ifndef __MAIN_H
-#define __MAIN_H
+#include "stdint.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+//------------------------------------------------------------
+// Display
+//------------------------------------------------------------
 
-#include "stm32f1xx_hal.h"
+#define DISPLAY_TYPE_M365DASHBOARD (1<<1)
+#define DISPLAY_TYPE_DEBUG (1<<0)
+#define DISPLAY_TYPE DISPLAY_TYPE_M365DASHBOARD
 
-#include <string.h>
-#include <stdlib.h>
-#include <arm_math.h>
-#include <stdbool.h>
+//------------------------------------------------------------
+// Throttle / brake
+//------------------------------------------------------------
 
-void HAL_TIM_MspPostInit(TIM_HandleTypeDef *htim);
+#define TRIGGER_OFFSET_ADC 50
+#define TRIGGER_DEFAULT 2020
+#define _T 2028
+#define SPEEDFILTER 3
 
-void Error_Handler(void);
+#define THROTTLEOFFSET 45
+#define THROTTLEMAX 175
+#define BRAKEOFFSET 50
+#define BRAKEMAX 100
 
-#define LED_Pin GPIO_PIN_1
-#define LED_GPIO_Port GPIOD
+//------------------------------------------------------------
+// Calibration
+//------------------------------------------------------------
 
-#define UART1_Tx_Pin GPIO_PIN_6
-#define UART1_Tx_GPIO_Port GPIOB
+#define CAL_BAT_V 14
+#define CAL_V 25
+#define CAL_I (38LL<<8)
 
-#define BrakeLight_Pin GPIO_PIN_15
-#define BrakeLight_GPIO_Port GPIOA
+//------------------------------------------------------------
+// Motor parameters
+//------------------------------------------------------------
 
-#define Temp_Pin GPIO_PIN_0
-#define Temp_GPIO_Port GPIOA
+#define SPEC_ANGLE 0
+#define KV 77
+#define INDUCTANCE 6LL
+#define RESISTANCE 40LL
+#define FLUX_LINKAGE 1200LL
+#define GAMMA 9LL
 
-#define Throttle_Pin GPIO_PIN_1
-#define Throttle_GPIO_Port GPIOA
+//------------------------------------------------------------
+// Current controller
+//------------------------------------------------------------
 
-#define Batt_Voltage_Pin GPIO_PIN_2
-#define Batt_Voltage_GPIO_Port GPIOA
+#define P_FACTOR_I_Q 100
+#define I_FACTOR_I_Q 2
+#define P_FACTOR_I_D 100
+#define I_FACTOR_I_D 10
 
-#define Phase_Current_1_Pin GPIO_PIN_3
-#define Phase_Current_1_GPIO_Port GPIOA
+//------------------------------------------------------------
+// Speed calculation
+//------------------------------------------------------------
 
-#define Phase_Current_2_Pin GPIO_PIN_4
-#define Phase_Current_2_GPIO_Port GPIOA
+#define WHEEL_CIRCUMFERENCE 2302
+#define GEAR_RATIO 45
 
-#define Phase_Current_3_Pin GPIO_PIN_5
-#define Phase_Current_3_GPIO_Port GPIOA
+//------------------------------------------------------------
+// Speed limits
+//------------------------------------------------------------
 
-#define Phase_Voltage_1_Pin GPIO_PIN_6
-#define Phase_Voltage_1_GPIO_Port GPIOA
+#define SPEEDLIMIT_ECO 20
+#define SPEEDLIMIT_NORMAL 40
+#define SPEEDLIMIT_SPORT 60
 
-#define Phase_Voltage_2_Pin GPIO_PIN_7
-#define Phase_Voltage_2_GPIO_Port GPIOA
+//------------------------------------------------------------
+// Phase current limits (mA)
+//------------------------------------------------------------
 
-#define Phase_Voltage_3_Pin GPIO_PIN_1
-#define Phase_Voltage_3_GPIO_Port GPIOB
+#define PH_CURRENT_MAX_ECO 20000
+#define PH_CURRENT_MAX_NORMAL 45000
+#define PH_CURRENT_MAX_SPORT 65000
 
-#define HALL_3_Pin GPIO_PIN_0
-#define HALL_3_GPIO_Port GPIOB
+//------------------------------------------------------------
+// Regen
+//------------------------------------------------------------
 
-#define HALL_1_Pin GPIO_PIN_4
-#define HALL_1_GPIO_Port GPIOB
+#define REGEN_CURRENT 5000
+#define REGEN_MAX_CURRENT 5000
+#define REGEN_CURRENT_MAX 5000
 
-#define HALL_2_Pin GPIO_PIN_5
-#define HALL_2_GPIO_Port GPIOB
+//------------------------------------------------------------
+// Field weakening
+//------------------------------------------------------------
 
-#define PWR_BTN_Pin GPIO_PIN_14
-#define PWR_BTN_GPIO_Port GPIOC
+#define FW_CURRENT_MAX 0
+#define FIELD_WEAKENING_CURRENT_MAX 0
+#define FIELD_WEAKNING_CURRENT_MAX 0
 
-#define TPS_ENA_Pin GPIO_PIN_15
-#define TPS_ENA_GPIO_Port GPIOC
+//------------------------------------------------------------
+// Battery current
+//------------------------------------------------------------
 
-#define PUSHASSIST_CURRENT 30
-#define SIXSTEPTHRESHOLD 9000
+#define BATTERYCURRENT_MAX 45000
+#define BATTERISTRÖM_MAX 45000
 
-typedef struct {
-  q31_t Voltage;
-  int16_t phase_current_limit;
-  q31_t Battery_Current;
-  uint8_t hall_angle_detect_flag;
-  uint8_t char_dyn_adc_state;
-  uint8_t assist_level;
-  uint8_t regen_level;
-  int8_t Temperature;
-  int8_t mode;
-  bool light;
-  bool beep;
-  uint8_t shutdown;
-  q31_t i_q_setpoint;
-  int32_t i_q_setpoint_target;
-  uint32_t speed;
-  int8_t speed_limit;
-} M365State_t;
+//------------------------------------------------------------
+// Battery voltage limits
+//------------------------------------------------------------
 
-int32_t map(int32_t x, int32_t in_min, int32_t in_max,
-            int32_t out_min, int32_t out_max);
+#define BATTERYVOLTAGE_MIN 39000
+#define BATTERYVOLTAGE_MAX 54600
 
-extern q31_t switchtime[3];
-extern uint32_t uint32_PAS_counter;
+//------------------------------------------------------------
+// Battery level thresholds
+//------------------------------------------------------------
 
-void UserSysTickHandler();
+#define BATTERINIVÅ_1 323000
+#define BATTERINIVÅ_2 329000
+#define BATTERINIVÅ_3 334400
+#define BATTERINIVÅ_4 436000
+#define BATTERINIVÅ_5 546000
 
-void calculate_tic_limits(int8_t speed_limit);
+//------------------------------------------------------------
+// ADC channels
+//------------------------------------------------------------
 
-void _Error_Handler(char*, int);
+#define ADC_VOLTAGE 0
+#define ADC_THROTTLE 1
+#define ADC_TEMP 2
 
-#ifdef __cplusplus
-}
-#endif
+//------------------------------------------------------------
+// Motor direction
+//------------------------------------------------------------
 
-#endif /* __MAIN_H */
+#define REVERSE 1
+
+//------------------------------------------------------------
+// Speed PLL
+//------------------------------------------------------------
+
+// SPEED_PLL intentionally not defined.
+
+#define P_FACTOR_PLL 9
+#define I_FACTOR_PLL 10
+
+#endif /* CONFIG_H_ */
