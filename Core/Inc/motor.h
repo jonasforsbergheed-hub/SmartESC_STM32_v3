@@ -5,10 +5,121 @@
 #include <stdbool.h>
 
 #include "main.h"
+#include "config.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+
+//------------------------------------------------------------
+// Motor parameters
+//------------------------------------------------------------
+
+#ifndef WHEEL_CIRCUMFERENCE
+#define WHEEL_CIRCUMFERENCE 2302
+#endif
+
+#ifndef GEAR_RATIO
+#define GEAR_RATIO 45
+#endif
+
+#ifndef ADC_VOLTAGE
+#define ADC_VOLTAGE 0
+#endif
+
+#ifndef CAL_BAT_V
+#define CAL_BAT_V 14
+#endif
+
+#ifndef CAL_I
+#define CAL_I (38LL << 8)
+#endif
+
+#ifndef BATTERYCURRENT_MAX
+#define BATTERYCURRENT_MAX 45000
+#endif
+
+#ifndef REGEN_CURRENT_MAX
+#define REGEN_CURRENT_MAX 5000
+#endif
+
+#ifndef P_FACTOR_I_Q
+#define P_FACTOR_I_Q 100
+#endif
+
+#ifndef I_FACTOR_I_Q
+#define I_FACTOR_I_Q 2
+#endif
+
+#ifndef P_FACTOR_I_D
+#define P_FACTOR_I_D 100
+#endif
+
+#ifndef I_FACTOR_I_D
+#define I_FACTOR_I_D 10
+#endif
+
+#ifndef MAX_D_FACTOR
+#define MAX_D_FACTOR 1
+#endif
+
+#ifndef SPEEDFILTER
+#define SPEEDFILTER 3
+#endif
+
+#ifndef SPEC_ANGLE
+#define SPEC_ANGLE 0
+#endif
+
+#ifndef REVERSE
+#define REVERSE 1
+#endif
+
+#ifndef P_FACTOR_PLL
+#define P_FACTOR_PLL 9
+#endif
+
+#ifndef I_FACTOR_PLL
+#define I_FACTOR_PLL 10
+#endif
+
+#ifndef SIXSTEPTHRESHOLD
+#define SIXSTEPTHRESHOLD 9000
+#endif
+
+
+//------------------------------------------------------------
+// ADC phase-current indexes
+//
+// motor.c stores six ADC values in adcData[].
+// Phase A = ADC index 3
+// Phase B = ADC index 4
+// Phase C = ADC index 5
+//------------------------------------------------------------
+
+#ifndef ADC_CHANA
+#define ADC_CHANA 3
+#endif
+
+#ifndef ADC_CHANB
+#define ADC_CHANB 4
+#endif
+
+#ifndef ADC_CHANC
+#define ADC_CHANC 5
+#endif
+
+
+//------------------------------------------------------------
+// Angle estimation
+//------------------------------------------------------------
+
+enum angle_estimation
+{
+    EXTRAPOLATION = 0,
+    SPEED_PLL
+};
 
 
 //------------------------------------------------------------
@@ -25,18 +136,7 @@ enum
 
 
 //------------------------------------------------------------
-// Angle estimation
-//------------------------------------------------------------
-
-enum angle_estimation
-{
-    EXTRAPOLATION = 0,
-    SPEED_PLL
-};
-
-
-//------------------------------------------------------------
-// Error states
+// Motor error states
 //------------------------------------------------------------
 
 enum errors
@@ -50,7 +150,7 @@ enum errors
 
 
 //------------------------------------------------------------
-// Operating modes
+// M365 operating modes
 //------------------------------------------------------------
 
 #ifndef eco
@@ -67,28 +167,7 @@ enum errors
 
 
 //------------------------------------------------------------
-// ADC channels
-//------------------------------------------------------------
-
-#ifndef ADC_VOLTAGE
-#define ADC_VOLTAGE 0
-#endif
-
-#ifndef ADC_CHANA
-#define ADC_CHANA 3
-#endif
-
-#ifndef ADC_CHANB
-#define ADC_CHANB 4
-#endif
-
-#ifndef ADC_CHANC
-#define ADC_CHANC 5
-#endif
-
-
-//------------------------------------------------------------
-// Motor public state
+// Public motor state
 //------------------------------------------------------------
 
 typedef struct
@@ -117,6 +196,17 @@ typedef struct
 
     bool field_weakening_enable;
 
+    /*
+     * ADC DMA buffer.
+     *
+     * motor.c uses:
+     *
+     * adcData[ADC_CHANA]
+     * adcData[ADC_CHANB]
+     * adcData[ADC_CHANC]
+     *
+     * and starts DMA with 6 values.
+     */
     uint16_t adcData[16];
 
     uint32_t debug[10];
@@ -125,7 +215,7 @@ typedef struct
 
 
 //------------------------------------------------------------
-// Motor internal state
+// Internal motor state
 //------------------------------------------------------------
 
 typedef struct
