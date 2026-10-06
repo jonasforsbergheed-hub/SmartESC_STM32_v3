@@ -1,7 +1,4 @@
 /*
-/*
- * config.h
-/*
  * config.h
  *
  * SmartESC STM32 V3 / M365
@@ -126,30 +123,4 @@
 #define BATTERINIVÅ_2 329000
 #define BATTERINIVÅ_3 334400
 #define BATTERINIVÅ_4 436000
-#define BATTERINIVÅ_5 546000
-
-//------------------------------------------------------------
-// ADC channels
-//------------------------------------------------------------
-
-#define ADC_VOLTAGE 0
-#define ADC_THROTTLE 1
-#define ADC_TEMP 2
-
-//------------------------------------------------------------
-// Motor direction
-//------------------------------------------------------------
-
-#define REVERSE 1
-
-//------------------------------------------------------------
-// Speed PLL
-//------------------------------------------------------------
-// SPEED_PLL intentionally not defined.
-// motor.c uses #ifdef SPEED_PLL, so defining it as 0
-// would still enable the PLL code.
-
-#define P_FACTOR_PLL 9
-#define I_FACTOR_PLL 10
-
-#endif /* CONFIG_H_ */
+#define BATTERINIVÅ_
