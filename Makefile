@@ -54,7 +54,7 @@ Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_hal_exti.c \
 Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_hal_tim.c \
 Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_hal_tim_ex.c \
 Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_hal_uart.c \
-Src/system_stm32f1xx.c
+Core/Src/system_stm32f1xx.c
 
 ASM_SOURCES = \
 Core/Startup/startup_stm32f103c8tx.s
@@ -66,15 +66,19 @@ Core/Startup/startup_stm32f103c8tx.s
 PREFIX = arm-none-eabi-
 
 ifdef GCC_PATH
+
 CC = $(GCC_PATH)/$(PREFIX)gcc
 AS = $(GCC_PATH)/$(PREFIX)gcc -x assembler-with-cpp
 CP = $(GCC_PATH)/$(PREFIX)objcopy
 SZ = $(GCC_PATH)/$(PREFIX)size
+
 else
+
 CC = $(PREFIX)gcc
 AS = $(PREFIX)gcc -x assembler-with-cpp
 CP = $(PREFIX)objcopy
 SZ = $(PREFIX)size
+
 endif
 
 HEX = $(CP) -O ihex
@@ -290,7 +294,7 @@ $(BUILD_DIR)/stm32f1xx_hal_tim_ex.o: Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_
 $(BUILD_DIR)/stm32f1xx_hal_uart.o: Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_hal_uart.c Makefile | $(BUILD_DIR)
 	$(CC) -c $(CFLAGS) $< -o $@
 
-$(BUILD_DIR)/system_stm32f1xx.o: Src/system_stm32f1xx.c Makefile | $(BUILD_DIR)
+$(BUILD_DIR)/system_stm32f1xx.o: Core/Src/system_stm32f1xx.c Makefile | $(BUILD_DIR)
 	$(CC) -c $(CFLAGS) $< -o $@
 
 #######################################
