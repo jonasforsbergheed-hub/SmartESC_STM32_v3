@@ -1,155 +1,275 @@
-#!/usr/bin/python3
-from binascii import hexlify
-import struct
-import keystone
-from xiaotea import XiaoTea
+/*
+ * motor.h
+ *
+ * SmartESC STM32 V3 / M365
+ *
+ * Motor state definitions and motor interface.
+ */
 
-# https://web.eecs.umich.edu/~prabal/teaching/eecs373-f10/readings/ARMv7-M_ARM.pdf
-MOVW_T3_IMM = [*[None]*5, 11, *[None]*6, 15, 14, 13, 12, None, 10, 9, 8, *[None]*4, 7, 6, 5, 4, 3, 2, 1, 0]
-MOVS_T1_IMM = [*[None]*8, 7, 6, 5, 4, 3, 2, 1, 0]
+#ifndef MOTOR_H_
+#define MOTOR_H_
 
+#include <stdint.h>
+#include <stdbool.h>
 
-def PatchImm(data, ofs, size, imm, signature):
-    assert size % 2 == 0, 'size must be power of 2!'
-    assert len(signature) == size * 8, 'signature must be exactly size * 8 long!'
-
-    imm = int.from_bytes(imm, 'little')
-    sfmt = '<' + 'H' * (size // 2)
-
-    sigs = [signature[i:i + 16][::-1] for i in range(0, len(signature), 16)]
-    orig = data[ofs:ofs+size]
-    words = struct.unpack(sfmt, orig)
-
-    patched = []
-
-    for i, word in enumerate(words):
-        for j in range(16):
-            imm_bitofs = sigs[i][j]
-
-            if imm_bitofs is None:
-                continue
-
-            imm_mask = 1 << imm_bitofs
-            word_mask = 1 << j
-
-            if imm & imm_mask:
-                word |= word_mask
-            else:
-                word &= ~word_mask
-
-        patched.append(word)
-
-    packed = struct.pack(sfmt, *patched)
-    data[ofs:ofs+size] = packed
-
-    return (orig, packed)
+#include "main.h"
+#include "config.h"
+#include <arm_math.h>
 
 
-class SignatureException(Exception):
-    pass
+//------------------------------------------------------------
+// Motor / speed parameters
+//------------------------------------------------------------
+
+#ifndef WHEEL_CIRCUMFERENCE
+#define WHEEL_CIRCUMFERENCE 2302
+#endif
+
+#ifndef GEAR_RATIO
+#define GEAR_RATIO 45
+#endif
 
 
-def FindPattern(data, signature, mask=None, start=None, maxit=None):
-    sig_len = len(signature)
+//------------------------------------------------------------
+// ADC
+//------------------------------------------------------------
 
-    if start is None:
-        start = 0
+#ifndef ADC_VOLTAGE
+#define ADC_VOLTAGE 0
+#endif
 
-    stop = len(data) - len(signature)
+/*
+ * ADC positions used by motor.c.
+ *
+ * motor.c stores the three phase-current measurements in
+ * adcData[] and uses these indexes when calibrating them.
+ */
+#ifndef ADC_CHANA
+#define ADC_CHANA 3
+#endif
 
-    if maxit is not None:
-        stop = start + maxit
+#ifndef ADC_CHANB
+#define ADC_CHANB 4
+#endif
 
-    if mask:
-        assert sig_len == len(mask), 'mask must be as long as the signature!'
-
-        for i in range(sig_len):
-            signature[i] &= mask[i]
-
-    for i in range(start, stop):
-        matches = 0
-
-        while signature[matches] is None or signature[matches] == (
-            data[i + matches] & (mask[matches] if mask else 0xFF)
-        ):
-            matches += 1
-
-            if matches == sig_len:
-                return i
-
-    raise SignatureException('Pattern not found!')
+#ifndef ADC_CHANC
+#define ADC_CHANC 5
+#endif
 
 
-class FirmwarePatcher():
+//------------------------------------------------------------
+// Motor current / control parameters
+//------------------------------------------------------------
 
-    def __init__(self, data):
-        self.data = bytearray(data)
-        self.ks = keystone.Ks(
-            keystone.KS_ARCH_ARM,
-            keystone.KS_MODE_THUMB
-        )
+#ifndef BATTERYCURRENT_MAX
+#define BATTERYCURRENT_MAX 45000
+#endif
 
-    def encrypt(self):
-        cry = XiaoTea()
-        self.data = cry.encrypt(self.data)
+#ifndef REGEN_CURRENT_MAX
+#define REGEN_CURRENT_MAX 5000
+#endif
 
-    def kers_min_speed(self, kmh):
-        val = struct.pack('<H', int(kmh * 345))
+#ifndef MAX_D_FACTOR
+#define MAX_D_FACTOR 1
+#endif
 
-        sig = [
-            0x25, 0x68,
-            0x40, 0xF6,
-            0x16, 0x07,
-            0xBD, 0x42
-        ]
 
-        ofs = FindPattern(self.data, sig) + 2
+//------------------------------------------------------------
+// Six-step threshold
+//------------------------------------------------------------
 
-        pre, post = PatchImm(
-            self.data,
-            ofs,
-            4,
-            val,
-            MOVW_T3_IMM
-        )
+#ifndef SIXSTEPTHRESHOLD
+#define SIXSTEPTHRESHOLD 9000
+#endif
 
-        return [(ofs, pre, post)]
 
-    def speed_params(
-        self,
-        normal_kmh,
-        normal_phase,
-        normal_battery,
-        eco_kmh,
-        eco_phase,
-        eco_battery
-    ):
-        ret = []
+//------------------------------------------------------------
+// Rotor angle estimation
+//------------------------------------------------------------
 
-        sig = [
-            0x80, 0x28,
-            0x00, 0xDD,
-            0x80, 0x20,
-            *[None]*2,
-            0x68, 0x43,
-            0x00, 0x0C
-        ]
+enum angle_estimation
+{
+    EXTRAPOLATION = 0,
+    SPEED_PLL
+};
 
-        ofs = FindPattern(self.data, sig) + 8
 
-        pre = self.data[ofs:ofs+4]
+//------------------------------------------------------------
+// Motor system state
+//------------------------------------------------------------
 
-        post = bytes(
-            self.ks.asm(
-                'MOVW R2, #{:n}'.format(normal_battery)
-            )[0]
-        )
+enum
+{
+    Stop = 0,
+    SixStep,
+    Interpolation,
+    PLL
+};
 
-        self.data[ofs:ofs+4] = post
-        ret.append([ofs, pre, post])
 
-        ofs += 4
+//------------------------------------------------------------
+// Motor error states
+//------------------------------------------------------------
 
-        pre = self.data[ofs:ofs+2]
+enum errors
+{
+    none = 0,
+    hall = 18,
+    lowbattery = 24,
+    overcurrent = 4,
+    brake = 15
+};
 
-        post = bytes
+
+//------------------------------------------------------------
+// Internal motor state
+//------------------------------------------------------------
+
+typedef struct
+{
+    /*
+     * Measured d/q currents
+     */
+    q31_t i_d;
+    q31_t i_q;
+
+    /*
+     * Requested d/q currents
+     */
+    q31_t i_q_setpoint;
+    q31_t i_d_setpoint;
+
+    /*
+     * Absolute current-vector magnitude
+     */
+    q31_t i_setpoint_abs;
+
+    /*
+     * Temporary current setpoints
+     */
+    int32_t i_q_setpoint_temp;
+    int32_t i_d_setpoint_temp;
+
+    /*
+     * d/q voltage output
+     */
+    q31_t u_d;
+    q31_t u_q;
+    q31_t u_abs;
+
+    /*
+     * Calculated battery current
+     */
+    q31_t Battery_Current;
+
+    /*
+     * Dynamic ADC sampling state
+     *
+     * 1 = phase C high
+     * 2 = phase A high
+     * 3 = phase B high
+     */
+    uint8_t char_dyn_adc_state;
+
+    /*
+     * Previous/system motor state
+     */
+    int8_t system_state;
+
+    /*
+     * Motor error state
+     */
+    int8_t error_state;
+
+    /*
+     * Motor-specific Hall angle
+     */
+    int16_t spec_angle;
+
+    /*
+     * Assist / regen levels
+     */
+    uint8_t assist_level;
+    uint8_t regen_level;
+
+    /*
+     * Current and speed limits used internally
+     */
+    int16_t phase_current_limit;
+    int8_t speed_limit;
+
+    /*
+     * Motor operating mode
+     */
+    int8_t mode;
+
+    /*
+     * Angle estimation method
+     */
+    enum angle_estimation angle_estimation;
+
+    /*
+     * Hall angle detection / autodetect state
+     *
+     * 1 = normal Hall operation
+     * 0 = autodetection/open-loop
+     */
+    uint8_t hall_angle_detect_flag;
+
+} MotorState_t;
+
+
+//------------------------------------------------------------
+// Global motor state
+//------------------------------------------------------------
+
+extern MotorState_t MS;
+
+
+//------------------------------------------------------------
+// Motor functions
+//------------------------------------------------------------
+
+void motor_init(volatile MotorStatePublic_t* motorStatePublic);
+
+void motor_autodetect(void);
+
+void motor_slow_loop(
+    volatile MotorStatePublic_t* p_MotorStatePublic,
+    M365State_t* p_M365State
+);
+
+void motor_disable_pwm(void);
+
+
+//------------------------------------------------------------
+// Speed / rotor functions
+//------------------------------------------------------------
+
+int32_t speed_to_tics(uint8_t speed);
+
+int8_t tics_to_speed(uint32_t tics);
+
+void calculate_tic_limits(int8_t speed_limit);
+
+q31_t speed_PLL(q31_t actual, q31_t target);
+
+void get_standstill_position(void);
+
+
+//------------------------------------------------------------
+// Motor control
+//------------------------------------------------------------
+
+void runPIcontrol(void);
+
+
+//------------------------------------------------------------
+// C++ compatibility
+//------------------------------------------------------------
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif /* MOTOR_H_ */
