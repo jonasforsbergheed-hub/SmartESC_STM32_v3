@@ -13,7 +13,6 @@ extern "C" {
 #include <stdlib.h>
 #include <arm_math.h>
 #include <stdbool.h>
-#include "utils.h"
 #include "motor.h"
 
 /* USER CODE END Includes */
