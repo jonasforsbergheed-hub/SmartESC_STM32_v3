@@ -1,156 +1,383 @@
-/*
- * config.h
- *
- * SmartESC STM32 V3 / M365
+#include "main.h"
+#include "config.h"
+#include "print.h"
+#include "motor.h"
+#include "button_processing.h"
+#include "M365_Dashboard.h"
+
+UART_HandleTypeDef huart1;
+UART_HandleTypeDef huart3;
+
+DMA_HandleTypeDef hdma_usart1_tx;
+DMA_HandleTypeDef hdma_usart1_rx;
+DMA_HandleTypeDef hdma_usart3_tx;
+DMA_HandleTypeDef hdma_usart3_rx;
+
+M365State_t M365State;
+MotorStatePublic_t MSPublic;
+
+volatile uint32_t systick_cnt = 0;
+
+// every 1ms
+void UserSysTickHandler(void)
+{
+    static uint32_t c;
+
+    systick_cnt++;
+    c++;
+
+    // every 10ms
+    if ((c % 10) == 0)
+    {
+        motor_slow_loop(&MSPublic, &M365State);
+    }
+}
+
+/**
+ * Enable DMA controller clock
  */
+static void DMA_Init(void)
+{
+    /* DMA controller clock enable */
+    __HAL_RCC_DMA1_CLK_ENABLE();
 
-#ifndef CONFIG_H_
-#define CONFIG_H_
+    // DMA channel 3: used for USART3_RX
+    /* DMA1_Channel3_IRQn interrupt configuration */
+    HAL_NVIC_SetPriority(DMA1_Channel3_IRQn, 3, 0);
+    HAL_NVIC_EnableIRQ(DMA1_Channel3_IRQn);
 
-#include "stdint.h"
+    // DMA channel 4: used for USART1_TX
+    /* DMA1_Channel4_IRQn interrupt configuration */
+    HAL_NVIC_SetPriority(DMA1_Channel4_IRQn, 3, 0);
+    HAL_NVIC_EnableIRQ(DMA1_Channel4_IRQn);
 
-//------------------------------------------------------------
-// Display
-//------------------------------------------------------------
+    // DMA channel 5: used for USART1_RX
+    /* DMA1_Channel5_IRQn interrupt configuration */
+    HAL_NVIC_SetPriority(DMA1_Channel5_IRQn, 3, 0);
+    HAL_NVIC_EnableIRQ(DMA1_Channel5_IRQn);
+}
 
-#define DISPLAY_TYPE_M365DASHBOARD (1<<1)
-#define DISPLAY_TYPE_DEBUG (1<<0)
-#define DISPLAY_TYPE DISPLAY_TYPE_M365DASHBOARD
+/**
+ * @brief System Clock Configuration
+ * @retval None
+ */
+void SystemClock_Config(void)
+{
+    RCC_OscInitTypeDef RCC_OscInitStruct;
+    RCC_ClkInitTypeDef RCC_ClkInitStruct;
+    RCC_PeriphCLKInitTypeDef PeriphClkInit;
 
-//------------------------------------------------------------
-// Throttle / brake
-//------------------------------------------------------------
+    /**Initializes the CPU, AHB and APB busses clocks
+     */
+    RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI;
+    RCC_OscInitStruct.HSIState = RCC_HSI_ON;
+    RCC_OscInitStruct.HSICalibrationValue = 16;
+    RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
+    RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSI_DIV2;
+    RCC_OscInitStruct.PLL.PLLMUL = RCC_PLL_MUL16;
 
-#define TRIGGER_OFFSET_ADC 50
-#define TRIGGER_DEFAULT 2020
-#define _T 2028
-#define SPEEDFILTER 3
+    if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
+    {
+        _Error_Handler(__FILE__, __LINE__);
+    }
 
-#define THROTTLEOFFSET 45
-#define THROTTLEMAX 175
+    /**Initializes the CPU, AHB and APB busses clocks
+     */
+    RCC_ClkInitStruct.ClockType =
+        RCC_CLOCKTYPE_HCLK |
+        RCC_CLOCKTYPE_SYSCLK |
+        RCC_CLOCKTYPE_PCLK1 |
+        RCC_CLOCKTYPE_PCLK2;
 
-#define BRAKEOFFSET 50
-#define BRAKEMAX 100
+    RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
+    RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
+    RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV2;
+    RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV1;
 
-//------------------------------------------------------------
-// Calibration
-//------------------------------------------------------------
+    if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_2) != HAL_OK)
+    {
+        _Error_Handler(__FILE__, __LINE__);
+    }
 
-#define CAL_BAT_V 14
-#define CAL_V 25
-#define CAL_I (38LL<<8)
+    PeriphClkInit.PeriphClockSelection = RCC_PERIPHCLK_ADC;
+    PeriphClkInit.AdcClockSelection = RCC_ADCPCLK2_DIV6;
 
-//------------------------------------------------------------
-// Motor parameters
-//------------------------------------------------------------
+    if (HAL_RCCEx_PeriphCLKConfig(&PeriphClkInit) != HAL_OK)
+    {
+        _Error_Handler(__FILE__, __LINE__);
+    }
 
-#define SPEC_ANGLE 0
-#define KV 77
+    /**Configure the Systick interrupt time
+     */
+    HAL_SYSTICK_Config(HAL_RCC_GetHCLKFreq() / 1000);
 
-#define INDUCTANCE 6LL
-#define RESISTANCE 40LL
-#define FLUX_LINKAGE 1200LL
-#define GAMMA 9LL
+    /**Configure the Systick
+     */
+    HAL_SYSTICK_CLKSourceConfig(SYSTICK_CLKSOURCE_HCLK);
 
-//------------------------------------------------------------
-// Current controller
-//------------------------------------------------------------
+    /* SysTick_IRQn interrupt configuration */
+    HAL_NVIC_SetPriority(SysTick_IRQn, 2, 0);
+}
 
-#define P_FACTOR_I_Q 100
-#define I_FACTOR_I_Q 2
+/**
+ * @brief USART1 Initialization Function
+ * @param None
+ * @retval None
+ */
+static void USART1_UART_Init(void)
+{
+    huart1.Instance = USART1;
+    huart1.Init.BaudRate = 115200;
+    huart1.Init.WordLength = UART_WORDLENGTH_8B;
+    huart1.Init.StopBits = UART_STOPBITS_1;
+    huart1.Init.Parity = UART_PARITY_NONE;
+    huart1.Init.Mode = UART_MODE_TX_RX;
+    huart1.Init.HwFlowCtl = UART_HWCONTROL_NONE;
+    huart1.Init.OverSampling = UART_OVERSAMPLING_16;
 
-#define P_FACTOR_I_D 100
-#define I_FACTOR_I_D 10
+    if (HAL_HalfDuplex_Init(&huart1) != HAL_OK)
+    {
+        Error_Handler();
+    }
+}
 
-//------------------------------------------------------------
-// Speed calculation
-//------------------------------------------------------------
+/**
+ * @brief USART3 Initialization Function
+ * @param None
+ * @retval None
+ */
+static void USART3_UART_Init(void)
+{
+    huart3.Instance = USART3;
+    huart3.Init.BaudRate = 115200;
+    huart3.Init.WordLength = UART_WORDLENGTH_8B;
+    huart3.Init.StopBits = UART_STOPBITS_1;
+    huart3.Init.Parity = UART_PARITY_NONE;
+    huart3.Init.Mode = UART_MODE_TX_RX;
+    huart3.Init.HwFlowCtl = UART_HWCONTROL_NONE;
+    huart3.Init.OverSampling = UART_OVERSAMPLING_16;
 
-#define WHEEL_CIRCUMFERENCE 2302
-#define GEAR_RATIO 45
+    if (HAL_UART_Init(&huart3) != HAL_OK)
+    {
+        _Error_Handler(__FILE__, __LINE__);
+    }
+}
 
-//------------------------------------------------------------
-// Speed limits
-//------------------------------------------------------------
+/**
+ * @brief GPIO Initialization Function
+ * @param None
+ * @retval None
+ */
+static void GPIO_Init(void)
+{
+    GPIO_InitTypeDef GPIO_InitStruct = {0};
 
-#define SPEEDLIMIT_ECO 20
-#define SPEEDLIMIT_NORMAL 40
-#define SPEEDLIMIT_SPORT 60
+    /* GPIO Ports Clock Enable */
+    __HAL_RCC_GPIOA_CLK_ENABLE();
+    __HAL_RCC_GPIOB_CLK_ENABLE();
+    __HAL_RCC_GPIOC_CLK_ENABLE();
+    __HAL_RCC_GPIOD_CLK_ENABLE();
 
-//------------------------------------------------------------
-// Phase current limits (mA)
-//------------------------------------------------------------
+    /* Configure GPIO pin : PWR_BTN_Pin */
+    GPIO_InitStruct.Pin = PWR_BTN_Pin;
+    GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+    GPIO_InitStruct.Pull = GPIO_NOPULL;
+    HAL_GPIO_Init(PWR_BTN_GPIO_Port, &GPIO_InitStruct);
 
-#define PH_CURRENT_MAX_ECO 20000
-#define PH_CURRENT_MAX_NORMAL 45000
-#define PH_CURRENT_MAX_SPORT 65000
+    /* Configure GPIO pin Output Level */
+    HAL_GPIO_WritePin(TPS_ENA_GPIO_Port, TPS_ENA_Pin, GPIO_PIN_SET);
 
-//------------------------------------------------------------
-// Regen
-//------------------------------------------------------------
+    /* Configure GPIO pin : TPS_ENA_Pin */
+    GPIO_InitStruct.Pin = TPS_ENA_Pin;
+    GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+    GPIO_InitStruct.Pull = GPIO_NOPULL;
+    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+    HAL_GPIO_Init(TPS_ENA_GPIO_Port, &GPIO_InitStruct);
 
-#define REGEN_CURRENT 5000
-#define REGEN_MAX_CURRENT 5000
-#define REGEN_CURRENT_MAX 5000
+    /* Configure GPIO pin Output Level */
+    HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, GPIO_PIN_RESET);
 
-//------------------------------------------------------------
-// Field weakening
-//------------------------------------------------------------
+    /* Configure GPIO pin : LED_Pin */
+    GPIO_InitStruct.Pin = LED_Pin;
+    GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+    GPIO_InitStruct.Pull = GPIO_NOPULL;
+    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+    HAL_GPIO_Init(LED_GPIO_Port, &GPIO_InitStruct);
 
-#define FW_CURRENT_MAX 0
-#define FIELD_WEAKENING_CURRENT_MAX 0
-#define FIELD_WEAKNING_CURRENT_MAX 0
+    /* Configure GPIO pin : UART1Tx_Pin */
+    GPIO_InitStruct.Pin = UART1_Tx_Pin;
+    GPIO_InitStruct.Mode = GPIO_MODE_AF_OD;
+    GPIO_InitStruct.Pull = GPIO_NOPULL;
+    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
 
-//------------------------------------------------------------
-// Battery current
-//------------------------------------------------------------
+    HAL_GPIO_WritePin(BrakeLight_GPIO_Port, BrakeLight_Pin, GPIO_PIN_RESET);
 
-#define BATTERYCURRENT_MAX 45000
-#define BATTERISTRÖM_MAX 45000
+    /* Configure GPIO pin : BrakeLight_Pin */
+    GPIO_InitStruct.Pin = BrakeLight_Pin;
+    GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_OD;
+    GPIO_InitStruct.Pull = GPIO_NOPULL;
+    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+    HAL_GPIO_Init(BrakeLight_GPIO_Port, &GPIO_InitStruct);
+}
 
-//------------------------------------------------------------
-// Battery voltage limits
-//------------------------------------------------------------
-// 48 V nominal / 13S Li-ion
-// 39.0 V minimum
-// 54.6 V fully charged
-//------------------------------------------------------------
+void HAL_UART_TxCpltCallback(UART_HandleTypeDef *UartHandle)
+{
+    if (UartHandle == &huart1)
+    {
+        HAL_HalfDuplex_EnableReceiver(&huart1);
+    }
+}
 
-#define BATTERYVOLTAGE_MIN 39000
-#define BATTERYVOLTAGE_MAX 54600
+void HAL_UART_ErrorCallback(UART_HandleTypeDef *UartHandle)
+{
+}
 
-//------------------------------------------------------------
-// Battery level thresholds
-//------------------------------------------------------------
+/**
+ * @brief This function is executed in case of error occurrence.
+ * @retval None
+ */
+void Error_Handler(void)
+{
+    /* User can add his own implementation to report the HAL error return state */
+    __disable_irq();
 
-#define BATTERINIVÅ_1 323000
-#define BATTERINIVÅ_2 329000
-#define BATTERINIVÅ_3 334400
-#define BATTERINIVÅ_4 436000
-#define BATTERINIVÅ_5 546000
+    while (1)
+    {
+        motor_disable_pwm();
+    }
+}
 
-//------------------------------------------------------------
-// ADC channels
-//------------------------------------------------------------
+void _Error_Handler(char *file, int line)
+{
+    /* User can add his own implementation to report the HAL error return state */
 
-#define ADC_VOLTAGE 0
-#define ADC_THROTTLE 1
-#define ADC_TEMP 2
+    while (1)
+    {
+        motor_disable_pwm();
+    }
+}
 
-//------------------------------------------------------------
-// Motor direction
-//------------------------------------------------------------
+#ifdef USE_FULL_ASSERT
 
-#define REVERSE 1
+/**
+  * @brief  Reports the name of the source file and the source line number
+  *         where the assert_param error has occurred.
+  * @param  file: pointer to the source file name
+  * @param  line: assert_param error line number
+  * @retval None
+  */
+void assert_failed(uint8_t *file, uint32_t line)
+{
+    /* USER CODE BEGIN 6 */
+    /* User can add his own implementation to report the file name and line number,
+       ex: printf("Wrong parameters value: file %s on line %d\r\n", file, line) */
+    /* USER CODE END 6 */
+}
 
-//------------------------------------------------------------
-// Speed PLL
-//------------------------------------------------------------
-// Deliberately disabled.
-// Do not define SPEED_PLL as 0 because motor.c uses #ifdef.
-//------------------------------------------------------------
+#endif /* USE_FULL_ASSERT */
 
-#define P_FACTOR_PLL 9
-#define I_FACTOR_PLL 10
+int main(void)
+{
+    /* Reset of all peripherals, Initializes the Flash interface and the Systick */
+    HAL_Init();
 
-#endif /* CONFIG_H_ */
+    /* Configure the system clock */
+    /* board do not have any external crystal and so we use internal clock. Final clock is 64MHz */
+    SystemClock_Config();
+
+    /* init GPIOS */
+    GPIO_Init();
+
+    /* init DMA for ADC, USART_1 and USART_3 */
+    DMA_Init();
+
+    /* init USART_1 and USART_3 */
+    USART1_UART_Init();
+    USART3_UART_Init();
+
+    MSPublic.brake_active = true;
+    MSPublic.i_q_setpoint_target = 0;
+    MSPublic.speed = 128000;
+
+    MSPublic.speed_limit = SPEEDLIMIT_NORMAL;
+    MSPublic.phase_current_limit = PH_CURRENT_MAX_NORMAL;
+    MSPublic.field_weakening_current_max = FIELD_WEAKNING_CURRENT_MAX;
+    MSPublic.battery_voltage_min = BATTERYVOLTAGE_MIN;
+
+    motor_init(&MSPublic);
+
+    M365State.phase_current_limit = PH_CURRENT_MAX_NORMAL;
+    M365State.speed_limit = SPEEDLIMIT_NORMAL;
+    M365State.regen_max_current = REGEN_MAX_CURRENT;
+
+    /* init dashboard */
+    M365Dashboard_init(huart1);
+    PWR_init();
+
+    while (1)
+    {
+        /* update M365State vars that are calculated on motor_slow_loop */
+        M365State.speed = MSPublic.speed;
+
+        /* search and process display message */
+        search_DashboardMessage(&M365State, huart1);
+
+        /* update vars to MSPublic */
+        MSPublic.phase_current_limit = M365State.phase_current_limit;
+        MSPublic.i_q_setpoint_target = M365State.i_q_setpoint_target;
+        MSPublic.brake_active = M365State.brake_active;
+
+        /* slow loop process, every 20ms */
+        static uint32_t systick_cnt_old = 0;
+
+        if ((systick_cnt_old != systick_cnt) &&
+            (systick_cnt % 20) == 0)
+        {
+            systick_cnt_old = systick_cnt;
+
+            /* process buttons */
+            checkButton(&M365State);
+
+            /* update vars to MSPublic */
+            MSPublic.mode = M365State.mode;
+            MSPublic.speed_limit = M365State.speed_limit;
+
+            /* battery voltage */
+            /* low pass filter measured battery voltage */
+            static q31_t q31_batt_voltage_acc = 0;
+
+            q31_batt_voltage_acc -= (q31_batt_voltage_acc >> 7);
+            q31_batt_voltage_acc += MSPublic.adcData[ADC_VOLTAGE];
+
+            q31_t q31_battery_voltage =
+                (q31_batt_voltage_acc >> 7) * CAL_BAT_V;
+
+            /* update vars to MSPublic */
+            MSPublic.battery_voltage =
+                M365State.battery_voltage =
+                q31_battery_voltage;
+
+            /* increase shutdown counter */
+            if (M365State.shutdown)
+                M365State.shutdown++;
+
+            /* temperature */
+            M365State.temperature =
+                (MSPublic.adcData[ADC_TEMP] * 41) >> 8;
+
+            /* DEBUG */
+            static uint8_t debug_cnt = 0;
+
+            if (++debug_cnt > 13)
+            {
+                debug_cnt = 0;
+
+                printf_(
+                    "%d, %d\n",
+                    MSPublic.debug[0],
+                    MSPublic.debug[1] * CAL_I
+                );
+            }
+        }
+    }
+}
