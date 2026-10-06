@@ -1,20 +1,15 @@
-/*
- * motor.h
- *
- * SmartESC STM32 V3 / M365
- *
- * Motor state definitions and motor interface.
- */
-
 #ifndef MOTOR_H_
 #define MOTOR_H_
 
 #include <stdint.h>
 #include <stdbool.h>
+#include <stdlib.h>
 
 #include "main.h"
-#include "config.h"
-#include <arm_math.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 
 //------------------------------------------------------------
@@ -38,12 +33,6 @@
 #define ADC_VOLTAGE 0
 #endif
 
-/*
- * ADC positions used by motor.c.
- *
- * motor.c stores the three phase-current measurements in
- * adcData[] and uses these indexes when calibrating them.
- */
 #ifndef ADC_CHANA
 #define ADC_CHANA 3
 #endif
@@ -58,7 +47,20 @@
 
 
 //------------------------------------------------------------
-// Motor current / control parameters
+// Calibration
+//------------------------------------------------------------
+
+#ifndef CAL_BAT_V
+#define CAL_BAT_V 14
+#endif
+
+#ifndef CAL_I
+#define CAL_I (38LL << 8)
+#endif
+
+
+//------------------------------------------------------------
+// Current limits
 //------------------------------------------------------------
 
 #ifndef BATTERYCURRENT_MAX
@@ -75,8 +77,41 @@
 
 
 //------------------------------------------------------------
-// Six-step threshold
+// Current PI controller
 //------------------------------------------------------------
+
+#ifndef P_FACTOR_I_Q
+#define P_FACTOR_I_Q 100
+#endif
+
+#ifndef I_FACTOR_I_Q
+#define I_FACTOR_I_Q 2
+#endif
+
+#ifndef P_FACTOR_I_D
+#define P_FACTOR_I_D 100
+#endif
+
+#ifndef I_FACTOR_I_D
+#define I_FACTOR_I_D 10
+#endif
+
+
+//------------------------------------------------------------
+// Speed / PLL
+//------------------------------------------------------------
+
+#ifndef SPEEDFILTER
+#define SPEEDFILTER 3
+#endif
+
+#ifndef P_FACTOR_PLL
+#define P_FACTOR_PLL 9
+#endif
+
+#ifndef I_FACTOR_PLL
+#define I_FACTOR_PLL 10
+#endif
 
 #ifndef SIXSTEPTHRESHOLD
 #define SIXSTEPTHRESHOLD 9000
@@ -84,7 +119,120 @@
 
 
 //------------------------------------------------------------
-// Rotor angle estimation
+// Motor direction / angle
+//------------------------------------------------------------
+
+#ifndef SPEC_ANGLE
+#define SPEC_ANGLE 0
+#endif
+
+#ifndef REVERSE
+#define REVERSE 1
+#endif
+
+
+//------------------------------------------------------------
+// Motor public state
+//------------------------------------------------------------
+
+typedef struct
+{
+    q31_t i_q_setpoint_target;
+
+    int16_t phase_current_limit;
+
+    q31_t battery_voltage;
+
+    q31_t battery_voltage_min;
+
+    uint16_t field_weakening_current_max;
+
+    int8_t system_state;
+
+    int8_t mode;
+
+    int8_t error_state;
+
+    int8_t speed_limit;
+
+    uint32_t speed;
+
+    bool brake_active;
+
+    bool field_weakening_enable;
+
+    /*
+     * ADC buffer.
+     *
+     * motor.c uses:
+     *   adcData[ADC_CHANA]
+     *   adcData[ADC_CHANB]
+     *   adcData[ADC_CHANC]
+     *
+     * and passes the complete buffer to the ADC DMA.
+     */
+    uint16_t adcData[16];
+
+    uint32_t debug[10];
+
+} MotorStatePublic_t;
+
+
+//------------------------------------------------------------
+// Motor internal state
+//------------------------------------------------------------
+
+typedef struct
+{
+    q31_t i_d;
+
+    q31_t i_q;
+
+    q31_t i_q_setpoint;
+
+    q31_t i_d_setpoint;
+
+    q31_t i_setpoint_abs;
+
+    int32_t i_q_setpoint_temp;
+
+    int32_t i_d_setpoint_temp;
+
+    q31_t u_d;
+
+    q31_t u_q;
+
+    q31_t u_abs;
+
+    q31_t Battery_Current;
+
+    uint8_t char_dyn_adc_state;
+
+    int8_t system_state;
+
+    int8_t error_state;
+
+    int16_t spec_angle;
+
+    uint8_t assist_level;
+
+    uint8_t regen_level;
+
+    int16_t phase_current_limit;
+
+    int8_t speed_limit;
+
+    int8_t mode;
+
+    enum angle_estimation angle_estimation;
+
+    bool hall_angle_detect_flag;
+
+} MotorState_t;
+
+
+//------------------------------------------------------------
+// Angle estimation
 //------------------------------------------------------------
 
 enum angle_estimation
@@ -95,7 +243,7 @@ enum angle_estimation
 
 
 //------------------------------------------------------------
-// Motor system state
+// Motor system states
 //------------------------------------------------------------
 
 enum
@@ -108,7 +256,7 @@ enum
 
 
 //------------------------------------------------------------
-// Motor error states
+// Error states
 //------------------------------------------------------------
 
 enum errors
@@ -122,101 +270,20 @@ enum errors
 
 
 //------------------------------------------------------------
-// Internal motor state
+// Operating modes
 //------------------------------------------------------------
 
-typedef struct
-{
-    /*
-     * Measured d/q currents
-     */
-    q31_t i_d;
-    q31_t i_q;
+#ifndef eco
+#define eco 0
+#endif
 
-    /*
-     * Requested d/q currents
-     */
-    q31_t i_q_setpoint;
-    q31_t i_d_setpoint;
+#ifndef normal
+#define normal 1
+#endif
 
-    /*
-     * Absolute current-vector magnitude
-     */
-    q31_t i_setpoint_abs;
-
-    /*
-     * Temporary current setpoints
-     */
-    int32_t i_q_setpoint_temp;
-    int32_t i_d_setpoint_temp;
-
-    /*
-     * d/q voltage output
-     */
-    q31_t u_d;
-    q31_t u_q;
-    q31_t u_abs;
-
-    /*
-     * Calculated battery current
-     */
-    q31_t Battery_Current;
-
-    /*
-     * Dynamic ADC sampling state
-     *
-     * 1 = phase C high
-     * 2 = phase A high
-     * 3 = phase B high
-     */
-    uint8_t char_dyn_adc_state;
-
-    /*
-     * Previous/system motor state
-     */
-    int8_t system_state;
-
-    /*
-     * Motor error state
-     */
-    int8_t error_state;
-
-    /*
-     * Motor-specific Hall angle
-     */
-    int16_t spec_angle;
-
-    /*
-     * Assist / regen levels
-     */
-    uint8_t assist_level;
-    uint8_t regen_level;
-
-    /*
-     * Current and speed limits used internally
-     */
-    int16_t phase_current_limit;
-    int8_t speed_limit;
-
-    /*
-     * Motor operating mode
-     */
-    int8_t mode;
-
-    /*
-     * Angle estimation method
-     */
-    enum angle_estimation angle_estimation;
-
-    /*
-     * Hall angle detection / autodetect state
-     *
-     * 1 = normal Hall operation
-     * 0 = autodetection/open-loop
-     */
-    uint8_t hall_angle_detect_flag;
-
-} MotorState_t;
+#ifndef sport
+#define sport 2
+#endif
 
 
 //------------------------------------------------------------
@@ -230,7 +297,9 @@ extern MotorState_t MS;
 // Motor functions
 //------------------------------------------------------------
 
-void motor_init(volatile MotorStatePublic_t* motorStatePublic);
+void motor_init(
+    volatile MotorStatePublic_t* motorStatePublic
+);
 
 void motor_autodetect(void);
 
@@ -238,13 +307,6 @@ void motor_slow_loop(
     volatile MotorStatePublic_t* p_MotorStatePublic,
     M365State_t* p_M365State
 );
-
-void motor_disable_pwm(void);
-
-
-//------------------------------------------------------------
-// Speed / rotor functions
-//------------------------------------------------------------
 
 int32_t speed_to_tics(uint8_t speed);
 
@@ -256,17 +318,8 @@ q31_t speed_PLL(q31_t actual, q31_t target);
 
 void get_standstill_position(void);
 
-
-//------------------------------------------------------------
-// Motor control
-//------------------------------------------------------------
-
 void runPIcontrol(void);
 
-
-//------------------------------------------------------------
-// C++ compatibility
-//------------------------------------------------------------
 
 #ifdef __cplusplus
 }
