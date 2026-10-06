@@ -1,53 +1,55 @@
-#ifndef CONFIG_H_
-#define CONFIG_H_
-#include "stdint.h"
+#pragma once
 
-#define DISPLAY_TYPE_M365DASHBOARD (1<<1)
-#define DISPLAY_TYPE_DEBUG (1<<0)
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-#define TRIGGER_OFFSET_ADC 50
-#define TRIGGER_DEFAULT 2020
-#define _T 2028
-#define SPEEDFILTER 3
+/* Includes ------------------------------------------------------------------*/
+#include "stm32f1xx_hal.h"
 
-#define DISPLAY_TYPE DISPLAY_TYPE_M365DASHBOARD
+/* Private includes ----------------------------------------------------------*/
+/* USER CODE BEGIN Includes */
+#include <string.h>
+#include <stdlib.h>
+#include <arm_math.h>
+#include <stdbool.h>
+#include "utils.h"
+#include "motor.h"
 
-#define CAL_BAT_V 14
-#define CAL_I 38
+/* USER CODE END Includes */
 
-#define P_FACTOR_I_Q 100
-#define I_FACTOR_I_Q 2
-#define P_FACTOR_I_D 100
-#define I_FACTOR_I_D 10
+/* Exported functions prototypes ---------------------------------------------*/
 
-#define THROTTLEOFFSET 45
-#define THROTTLEMAX 175
-#define BRAKEOFFSET 50
-#define BRAKEMAX 190
+void Error_Handler(void);
 
-#define WHEEL_CIRCUMFERENCE 2302
-#define GEAR_RATIO 1
+extern void UserSysTickHandler(void);
 
-#define SPEEDLIMIT_ECO 20
-#define SPEEDLIMIT_NORMAL 35
-#define SPEEDLIMIT_SPORT 55
+typedef struct
+{
+    q31_t battery_voltage;
+    int16_t phase_current_limit;
+    int16_t regen_max_current;
+    int8_t temperature;
+    int8_t mode;
+    bool light;
+    bool beep;
+    int32_t i_q_setpoint_target;
+    uint32_t speed;
+    bool brake_active;
+    uint32_t shutdown;
+    int8_t speed_limit;
+    int8_t error_state;
+} M365State_t;
 
-#define PH_CURRENT_MAX_ECO 15000
-#define PH_CURRENT_MAX_NORMAL 25000
-#define PH_CURRENT_MAX_SPORT 35000
+enum modes
+{
+    eco = 2,
+    normal = 0,
+    sport = 4
+};
 
-#define REGEN_CURRENT 10000
-#define FW_CURRENT_MAX 0
+void _Error_Handler(char*, int);
 
-#define BATTERYCURRENT_MAX 35000
-#define REGEN_CURRENT_MAX 1000
-
-#define BATTERYVOLTAGE_MIN 33000
-#define BATTERYVOLTAGE_MAX 54600
-
-#define REVERSE -1
-
-#define P_FACTOR_PLL 10
-#define I_FACTOR_PLL 10
-
+#ifdef __cplusplus
+}
 #endif
