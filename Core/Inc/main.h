@@ -47,7 +47,6 @@
 
 #define REVERSE -1
 
-#define SPEED_PLL 0
 #define P_FACTOR_PLL 10
 #define I_FACTOR_PLL 10
 
