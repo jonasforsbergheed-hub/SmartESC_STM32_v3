@@ -1,110 +1,53 @@
-#ifndef __MAIN_H
-#define __MAIN_H
+#ifndef CONFIG_H_
+#define CONFIG_H_
+#include "stdint.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+#define DISPLAY_TYPE_M365DASHBOARD (1<<1)
+#define DISPLAY_TYPE_DEBUG (1<<0)
 
-#include "stm32f1xx_hal.h"
-#include <string.h>
-#include <stdlib.h>
-#include <arm_math.h>
-#include <stdbool.h>
+#define TRIGGER_OFFSET_ADC 50
+#define TRIGGER_DEFAULT 2020
+#define _T 2028
+#define SPEEDFILTER 3
 
-void HAL_TIM_MspPostInit(TIM_HandleTypeDef *htim);
-void Error_Handler(void);
+#define DISPLAY_TYPE DISPLAY_TYPE_M365DASHBOARD
 
-#define LED_Pin GPIO_PIN_1
-#define LED_GPIO_Port GPIOD
+#define CAL_BAT_V 14
+#define CAL_I 38
 
-#define UART1_Tx_Pin GPIO_PIN_6
-#define UART1_Tx_GPIO_Port GPIOB
+#define P_FACTOR_I_Q 100
+#define I_FACTOR_I_Q 2
+#define P_FACTOR_I_D 100
+#define I_FACTOR_I_D 10
 
-#define BrakeLight_Pin GPIO_PIN_15
-#define BrakeLight_GPIO_Port GPIOA
+#define THROTTLEOFFSET 45
+#define THROTTLEMAX 175
+#define BRAKEOFFSET 50
+#define BRAKEMAX 190
 
-#define Temp_Pin GPIO_PIN_0
-#define Temp_GPIO_Port GPIOA
+#define WHEEL_CIRCUMFERENCE 2302
+#define GEAR_RATIO 1
 
-#define Throttle_Pin GPIO_PIN_1
-#define Throttle_GPIO_Port GPIOA
+#define SPEEDLIMIT_ECO 20
+#define SPEEDLIMIT_NORMAL 35
+#define SPEEDLIMIT_SPORT 55
 
-#define Batt_Voltage_Pin GPIO_PIN_2
-#define Batt_Voltage_GPIO_Port GPIOA
+#define PH_CURRENT_MAX_ECO 15000
+#define PH_CURRENT_MAX_NORMAL 25000
+#define PH_CURRENT_MAX_SPORT 35000
 
-#define Phase_Current_1_Pin GPIO_PIN_3
-#define Phase_Current_1_GPIO_Port GPIOA
+#define REGEN_CURRENT 10000
+#define FW_CURRENT_MAX 0
 
-#define Phase_Current_2_Pin GPIO_PIN_4
-#define Phase_Current_2_GPIO_Port GPIOA
+#define BATTERYCURRENT_MAX 35000
+#define REGEN_CURRENT_MAX 1000
 
-#define Phase_Current_3_Pin GPIO_PIN_5
-#define Phase_Current_3_GPIO_Port GPIOA
+#define BATTERYVOLTAGE_MIN 33000
+#define BATTERYVOLTAGE_MAX 54600
 
-#define Phase_Voltage_1_Pin GPIO_PIN_6
-#define Phase_Voltage_1_GPIO_Port GPIOA
+#define REVERSE -1
 
-#define Phase_Voltage_2_Pin GPIO_PIN_7
-#define Phase_Voltage_2_GPIO_Port GPIOA
-
-#define Phase_Voltage_3_Pin GPIO_PIN_1
-#define Phase_Voltage_3_GPIO_Port GPIOB
-
-#define HALL_3_Pin GPIO_PIN_0
-#define HALL_3_GPIO_Port GPIOB
-
-#define HALL_1_Pin GPIO_PIN_4
-#define HALL_1_GPIO_Port GPIOB
-
-#define HALL_2_Pin GPIO_PIN_5
-#define HALL_2_GPIO_Port GPIOB
-
-#define PWR_BTN_Pin GPIO_PIN_14
-#define PWR_BTN_GPIO_Port GPIOC
-
-#define TPS_ENA_Pin GPIO_PIN_15
-#define TPS_ENA_GPIO_Port GPIOC
-
-#define PUSHASSIST_CURRENT 30
-#define SIXSTEPTHRESHOLD 9000
-
-typedef struct {
-    q31_t Voltage;
-    int16_t phase_current_limit;
-    q31_t Battery_Current;
-    uint8_t hall_angle_detect_flag;
-    uint8_t char_dyn_adc_state;
-    uint8_t assist_level;
-    uint8_t regen_level;
-    int8_t Temperature;
-    int8_t mode;
-    bool light;
-    bool beep;
-    uint8_t shutdown;
-    q31_t i_q_setpoint;
-    int32_t i_q_setpoint_target;
-    uint32_t speed;
-    int8_t speed_limit;
-} M365State_t;
-
-int32_t map(
-    int32_t x,
-    int32_t in_min,
-    int32_t in_max,
-    int32_t out_min,
-    int32_t out_max
-);
-
-extern q31_t switchtime[3];
-extern uint32_t uint32_PAS_counter;
-
-void UserSysTickHandler(void);
-void calculate_tic_limits(int8_t speed_limit);
-
-void _Error_Handler(char*, int);
-
-#ifdef __cplusplus
-}
-#endif
+#define P_FACTOR_PLL 10
+#define I_FACTOR_PLL 10
 
 #endif
